@@ -16,6 +16,22 @@ const state = {
 
 const $ = (selector) => document.querySelector(selector);
 
+function cleanModelText(value) {
+  return String(value || '')
+    .replace(/\*\*(.*?)\*\*/g, '$1')
+    .replace(/^\s*#{1,6}\s+/gm, '')
+    .replace(/^\s*[-*]\s+/gm, '• ')
+    .replace(/[ \t]+\n/g, '\n')
+    .trim();
+}
+
+function escapeHtml(value) {
+  return cleanModelText(value)
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;');
+}
+
 function toast(message) {
   const node = $('#toast');
   node.textContent = message;
@@ -184,7 +200,7 @@ async function createConsultSession() {
 function renderChat(messages) {
   $('#chatMessages').innerHTML = messages.map((message) => `
     <div class="msg ${message.senderType}">
-      <div>${message.senderType}：${message.content}</div>
+      <div>${message.senderType}：${escapeHtml(message.content)}</div>
       ${message.senderType === 'AI' && message.sourceLabel ? `<div class="msg-source">${message.sourceLabel}${message.fallbackReason ? ` · ${message.fallbackReason}` : ''}</div>` : ''}
     </div>
   `).join('');
