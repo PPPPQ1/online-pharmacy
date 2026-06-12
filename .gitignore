@@ -1,0 +1,12 @@
+node_modules/
+.env
+*.log
+coverage/
+dist/
+*.pdf
+src/config/aiConfig.js
+需求规格说明书.txt
+功能模块划分说明书.txt
+数据库表设计说明书.txt
+接口设计说明书.txt
+代码设计说明书.txt

@@ -1,0 +1,16 @@
+{
+  "name": "online-pharmacy-demo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "线上购药系统演示项目：药品查询浏览、购物车订单、智能药师咨询",
+  "type": "module",
+  "scripts": {
+    "dev": "node src/server.js",
+    "start": "node src/server.js",
+    "test": "node --test test/*.test.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {}
+}
