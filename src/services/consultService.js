@@ -61,33 +61,76 @@ function knowledgeReply(content, risk) {
 async function callConfiguredModel(content, risk) {
   const config = await loadAiConfig();
   const provider = process.env.AI_PROVIDER || config.provider || 'mock';
-  if (provider !== 'openai-compatible') return knowledgeReply(content, risk);
+  if (provider !== 'openai-compatible') {
+    return {
+      content: knowledgeReply(content, risk),
+      source: 'mock',
+      sourceLabel: 'Mock 本地模拟'
+    };
+  }
   const apiBase = process.env.AI_API_BASE || config.apiBase;
   const apiKey = process.env.AI_API_KEY || config.apiKey;
   const model = process.env.AI_MODEL || config.model || 'gpt-4o-mini';
-  if (!apiKey || !apiBase) return knowledgeReply(content, risk);
+  if (!apiKey || !apiBase || apiKey.includes('请替换')) {
+    return {
+      content: knowledgeReply(content, risk),
+      source: 'mock',
+      sourceLabel: 'Mock 本地模拟',
+      fallbackReason: '未配置有效 API Base 或 API Key'
+    };
+  }
 
-  const response = await fetch(`${apiBase.replace(/\/$/, '')}/chat/completions`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      model,
-      messages: [
-        {
-          role: 'system',
-          content: '你是线上购药系统的AI药师助手，只能提供辅助信息。高风险、处方调整、特殊人群用药必须建议转人工药师。'
-        },
-        { role: 'user', content }
-      ],
-      temperature: 0.2
-    })
-  });
-  if (!response.ok) return knowledgeReply(content, risk);
-  const data = await response.json();
-  return `${data.choices?.[0]?.message?.content || knowledgeReply(content, risk)}\n\n提示：AI建议仅供参考，必要时咨询医生或药师。`;
+  try {
+    const response = await fetch(`${apiBase.replace(/\/$/, '')}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          {
+            role: 'system',
+            content: '你是线上购药系统的AI药师助手，只能提供辅助信息。高风险、处方调整、特殊人群用药必须建议转人工药师，不得替用户诊断、开方或决定用药。回答要围绕用户当前问题，不要复述无关药品说明。'
+          },
+          { role: 'user', content }
+        ],
+        temperature: 0.2
+      })
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      return {
+        content: knowledgeReply(content, risk),
+        source: 'mock',
+        sourceLabel: 'Mock 回退',
+        fallbackReason: `模型接口返回 ${response.status}：${errorText.slice(0, 120)}`
+      };
+    }
+    const data = await response.json();
+    const modelAnswer = data.choices?.[0]?.message?.content;
+    if (!modelAnswer) {
+      return {
+        content: knowledgeReply(content, risk),
+        source: 'mock',
+        sourceLabel: 'Mock 回退',
+        fallbackReason: '模型接口返回内容为空'
+      };
+    }
+    return {
+      content: `${modelAnswer}\n\n提示：AI建议仅供参考，必要时咨询医生或药师。`,
+      source: 'model',
+      sourceLabel: `真实模型：${model}`
+    };
+  } catch (error) {
+    return {
+      content: knowledgeReply(content, risk),
+      source: 'mock',
+      sourceLabel: 'Mock 回退',
+      fallbackReason: error.message
+    };
+  }
 }
 
 export function createSession(payload) {
@@ -136,9 +179,12 @@ export async function sendMessage(sessionId, payload) {
     messageId: nextId(store.consultMessages, 'messageId', 1),
     sessionId: session.sessionId,
     senderType: 'AI',
-    content: answer,
+    content: answer.content,
     riskLevel: risk.riskLevel,
     handoffRequired: risk.handoffRequired,
+    source: answer.source,
+    sourceLabel: answer.sourceLabel,
+    fallbackReason: answer.fallbackReason || '',
     createdAt: new Date().toISOString()
   };
   store.consultMessages.push(aiMessage);

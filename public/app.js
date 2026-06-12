@@ -183,7 +183,10 @@ async function createConsultSession() {
 
 function renderChat(messages) {
   $('#chatMessages').innerHTML = messages.map((message) => `
-    <div class="msg ${message.senderType}">${message.senderType}：${message.content}</div>
+    <div class="msg ${message.senderType}">
+      <div>${message.senderType}：${message.content}</div>
+      ${message.senderType === 'AI' && message.sourceLabel ? `<div class="msg-source">${message.sourceLabel}${message.fallbackReason ? ` · ${message.fallbackReason}` : ''}</div>` : ''}
+    </div>
   `).join('');
   $('#chatMessages').scrollTop = $('#chatMessages').scrollHeight;
 }
