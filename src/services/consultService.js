@@ -1,8 +1,36 @@
 import { currentUserId, nextId, store } from '../data/store.js';
-import { aiConfig } from '../config/aiConfig.js';
+import { defaultAiConfig } from '../config/aiConfig.default.js';
 import { HttpError } from '../utils/apiResponse.js';
 
 const HIGH_RISK_WORDS = ['胸痛', '呼吸困难', '过敏', '孕妇', '婴儿', '儿童', '抗生素', '阿莫西林', '处方', '剂量', '相互作用'];
+
+let cachedConfig;
+
+async function loadAiConfig() {
+  if (cachedConfig) return cachedConfig;
+  try {
+    const localConfig = await import('../config/aiConfig.js');
+    cachedConfig = { ...defaultAiConfig, ...(localConfig.aiConfig || {}) };
+  } catch {
+    cachedConfig = defaultAiConfig;
+  }
+  return cachedConfig;
+}
+
+export async function getAiModelInfo() {
+  const config = await loadAiConfig();
+  const provider = process.env.AI_PROVIDER || config.provider || 'mock';
+  const apiBase = process.env.AI_API_BASE || config.apiBase || '';
+  const model = process.env.AI_MODEL || config.model || 'mock-pharmacist';
+  const configured = provider === 'openai-compatible' && Boolean(process.env.AI_API_KEY || config.apiKey) && Boolean(apiBase);
+  return {
+    provider,
+    apiBase: apiBase ? apiBase.replace(/\/v\d+\/?$/, '/v*') : '',
+    model: provider === 'mock' ? 'mock-pharmacist' : model,
+    modeText: configured ? '真实大模型接口' : 'Mock 本地模拟',
+    note: configured ? 'AI 回复由配置的大模型生成' : '未配置完整 API Key/Base，当前使用本地 Mock 回复'
+  };
+}
 
 function assessRisk(content) {
   const matched = HIGH_RISK_WORDS.filter((word) => content.includes(word));
@@ -31,11 +59,12 @@ function knowledgeReply(content, risk) {
 }
 
 async function callConfiguredModel(content, risk) {
-  const provider = process.env.AI_PROVIDER || aiConfig.provider || 'mock';
+  const config = await loadAiConfig();
+  const provider = process.env.AI_PROVIDER || config.provider || 'mock';
   if (provider !== 'openai-compatible') return knowledgeReply(content, risk);
-  const apiBase = process.env.AI_API_BASE || aiConfig.apiBase;
-  const apiKey = process.env.AI_API_KEY || aiConfig.apiKey;
-  const model = process.env.AI_MODEL || aiConfig.model || 'gpt-4o-mini';
+  const apiBase = process.env.AI_API_BASE || config.apiBase;
+  const apiKey = process.env.AI_API_KEY || config.apiKey;
+  const model = process.env.AI_MODEL || config.model || 'gpt-4o-mini';
   if (!apiKey || !apiBase) return knowledgeReply(content, risk);
 
   const response = await fetch(`${apiBase.replace(/\/$/, '')}/chat/completions`, {

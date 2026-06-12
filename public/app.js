@@ -173,6 +173,9 @@ async function loadOrders() {
 }
 
 async function createConsultSession() {
+  const modelInfo = await api('/api/v1/consult/model-info');
+  $('#modelInfo').textContent = `当前模型：${modelInfo.provider} / ${modelInfo.model}（${modelInfo.modeText}）`;
+  $('#modelInfo').title = modelInfo.note;
   const session = await api('/api/v1/consult/sessions', { method: 'POST', body: { sessionType: '用药咨询', sourcePage: 'user-consult.html' } });
   state.currentSessionId = session.sessionId;
   renderChat([{ senderType: 'SYSTEM', content: 'AI智能药师已就绪，请输入药品或用药问题。' }]);

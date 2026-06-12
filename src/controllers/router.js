@@ -2,7 +2,7 @@ import { ok } from '../utils/apiResponse.js';
 import { homeOverview, listCategories, searchMedicines, getMedicineDetail } from '../services/medicineService.js';
 import { addToCart, deleteCartItem, listCart, updateCartItem } from '../services/cartService.js';
 import { createOrder, getOrderDetail, listOrders, payOrder, previewOrder } from '../services/orderService.js';
-import { createSession, handoff, listSessions, sendMessage } from '../services/consultService.js';
+import { createSession, getAiModelInfo, handoff, listSessions, sendMessage } from '../services/consultService.js';
 
 function match(pathname, pattern) {
   const names = [];
@@ -40,6 +40,7 @@ export async function route(req, body, url) {
   if (req.method === 'POST' && pathname === '/api/v1/payments/prepay') return ok(payOrder(body), '模拟支付成功');
 
   if (req.method === 'POST' && pathname === '/api/v1/consult/sessions') return ok(createSession(body), '咨询会话已创建');
+  if (req.method === 'GET' && pathname === '/api/v1/consult/model-info') return ok(await getAiModelInfo());
   if (req.method === 'GET' && pathname === '/api/v1/consult/sessions') return ok(listSessions());
   params = match(pathname, '/api/v1/consult/sessions/:sessionId/messages');
   if (req.method === 'POST' && params) return ok(await sendMessage(params.sessionId, body), 'AI药师已回复');
