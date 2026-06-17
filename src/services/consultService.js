@@ -21,8 +21,9 @@ export async function getAiModelInfo() {
   const config = await loadAiConfig();
   const provider = process.env.AI_PROVIDER || config.provider || 'mock';
   const apiBase = process.env.AI_API_BASE || config.apiBase || '';
+  const apiKey = process.env.AI_API_KEY || config.apiKey || '';
   const model = process.env.AI_MODEL || config.model || 'mock-pharmacist';
-  const configured = provider === 'openai-compatible' && Boolean(process.env.AI_API_KEY || config.apiKey) && Boolean(apiBase);
+  const configured = provider === 'openai-compatible' && Boolean(apiBase) && Boolean(apiKey) && !apiKey.includes('请替换');
   return {
     provider,
     apiBase: apiBase ? apiBase.replace(/\/v\d+\/?$/, '/v*') : '',

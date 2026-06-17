@@ -1,6 +1,7 @@
 export const currentUserId = 1;
 
-export const store = {
+function createInitialStore() {
+  return {
   users: [
     {
       userId: 1,
@@ -134,6 +135,17 @@ export const store = {
   consultMessages: [],
   aiRiskLogs: []
 };
+}
+
+export const store = createInitialStore();
+
+export function resetStore() {
+  const fresh = createInitialStore();
+  Object.keys(store).forEach((key) => {
+    delete store[key];
+  });
+  Object.assign(store, fresh);
+}
 
 export function nextId(collection, field, start = 1) {
   return collection.reduce((max, item) => Math.max(max, Number(item[field]) || 0), start - 1) + 1;
